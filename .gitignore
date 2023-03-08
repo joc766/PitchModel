@@ -2,3 +2,6 @@ __pycache__/
 logs/
 *.db
 test.*
+*.sh
+.DS_STORE
+query.txt

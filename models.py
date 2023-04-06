@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -41,6 +41,7 @@ class Pitcher(Base):
     playerId = Column(Integer, ForeignKey('players.id'))
     ratingId = Column(Integer, ForeignKey('pitcher_ratings.id'))
     pitchHand = Column(String(10))
+    n_plays = Column(Integer, default=0)
 
     player = relationship("Player", foreign_keys=[playerId])
     rating = relationship("PitcherRating", uselist=False, foreign_keys=[ratingId])
@@ -58,6 +59,7 @@ class Batter(Base):
     playerId = Column(Integer, ForeignKey('players.id'))
     ratingId = Column(Integer, ForeignKey('batter_ratings.id'))
     batSide = Column(String(10))
+    n_plays = Column(Integer, default=0)
 
     player = relationship("Player", foreign_keys=[playerId])
     rating = relationship("BatterRating", uselist=False, foreign_keys=[ratingId])
@@ -73,10 +75,11 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=False)
 
-    date = Column(String(20))
+    date = Column(Date)
     homeTeamId = Column(Integer, ForeignKey('teams.id'))
     awayTeamId = Column(Integer, ForeignKey('teams.id'))
     venue = Column(String(255))
+    szn = Column(Integer)
 
     plays = relationship("Play", back_populates="game", uselist=True)
 
@@ -90,6 +93,7 @@ class Play(Base):
     result = Column(String(255))
     pitcherId = Column(Integer, ForeignKey('pitchers.playerId'))
     batterId = Column(Integer, ForeignKey('batters.playerId'))
+    training = Column(Boolean, default=True)
 
     game = relationship("Game", back_populates="plays", uselist=False)
     pitcher = relationship("Pitcher")

@@ -23,7 +23,7 @@ results_table = {
 def main():
     with create_session_scope() as session:
         # select all of the games with training = True
-        games = session.query(Game).all()
+        games = session.query(Game).order_by(Game.date).all()
         
         all_pitchers = session.query(Pitcher).all()
         all_batters = session.query(Batter).all()
@@ -42,6 +42,7 @@ def main():
             game_batter_rewards = dict.fromkeys([play.batterId for play in game.plays], [0, 0])
             for play in game.plays:
                 if play.training:
+                    print(play.game.id)
                     if results_table[play.result] == -1:
                         continue
 

@@ -1,7 +1,7 @@
 from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating
 from db_utils import create_session_scope
 
-from utils import test_performance, logistic_func, quadratic_func, basic_func, calculate_ev, MAX_RESULT
+from utils import logistic_func, quadratic_func, basic_func, calculate_ev, MAX_RESULT
 from progressbar import progressbar
 
 K = 16

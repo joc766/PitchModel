@@ -79,13 +79,38 @@ def test_performance(results_table, pitchers_table=None, batters_table=None, ses
                 n_plays += 1
             
         return total_inaccuracy, total_inaccuracy / n_plays, total_outcome/n_plays
+    
+def test_baseline(results_table, pitchers_table=None, batters_table=None, session=None):
+    with create_session_scope(session) as session:
+        if not pitchers_table:
+            all_pitchers = session.query(Pitcher).all()
+            pitchers_table = {pitcher.playerId: pitcher for pitcher in all_pitchers}
+        if not batters_table:
+            all_batters = session.query(Batter).all()
+            batters_table = {batter.playerId: batter for batter in all_batters}
+
+    testing_plays = session.query(Play).filter(Play.training == False).all()
+    
+    # measure the accuracy of the predicting the most frequent outcome (0 for an out)
+    total_inaccuracy = 0.0
+    n_plays = 0
+    total_outcome = 0.0
+    for play in testing_plays:
+        result = play.result
+        observed = results_table[result] 
+        if observed != -1:
+            total_outcome += observed
+            total_inaccuracy += observed
+            n_plays += 1
+    
+    return total_inaccuracy, total_inaccuracy / n_plays, total_outcome/n_plays
 
 if __name__ == "__main__":
-    print(results_table)
-    total_wins, expected_wins, n_plays = test_predicted_outcomes()
-    print(total_wins, expected_wins, n_plays)
-    print(f"Inaccuracy: {total_wins - expected_wins} / {n_plays} = {(total_wins - expected_wins) / n_plays}") 
-    # total_inaccuracy, average_inaccuracy, average_outcome = test_performance(results_table)
-    # print(f"Total Inaccuracy: {total_inaccuracy}")
-    # print(f"Average Inaccuracy: {average_inaccuracy}")
-    # print(f"Average Outcome: {average_outcome}")
+    # print(results_table)
+    # total_wins, expected_wins, n_plays = test_predicted_outcomes()
+    # print(total_wins, expected_wins, n_plays)
+    # print(f"Inaccuracy: {total_wins - expected_wins} / {n_plays} = {(total_wins - expected_wins) / n_plays}") 
+    total_inaccuracy, average_inaccuracy, average_outcome = test_baseline(results_table)
+    print(f"Total Inaccuracy: {total_inaccuracy}")
+    print(f"Average Inaccuracy: {average_inaccuracy}")
+    print(f"Average Outcome: {average_outcome}")

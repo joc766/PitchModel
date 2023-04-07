@@ -36,7 +36,7 @@ def main():
         batter_ratings = {batter.playerId: batter.rating.value for batter in all_batters}
 
         print('Simulating Games...')
-        for game in progressbar(games):
+        for game in games[:1]:
             # game_pitcher_rewards tracks the pitcher's expected value and scored value for each game. An update will be made at the end of the game
             game_pitcher_rewards = dict.fromkeys([play.pitcherId for play in game.plays], [0, 0])
             game_batter_rewards = dict.fromkeys([play.batterId for play in game.plays], [0, 0])
@@ -50,17 +50,19 @@ def main():
                     game_pitcher_rewards[play.pitcherId][0] += e_p
                     game_batter_rewards[play.batterId][0] += e_b
 
-                    # normallize the play result to be between 0 and 1
                     s_b = results_table[play.result]
                     s_p = 1 - s_b
                     game_pitcher_rewards[play.pitcherId][1] += s_p
                     game_batter_rewards[play.batterId][1] += s_b
+                    print(f"pitcher: {play.pitcherId}, batter: {play.batterId}, e_b: {e_b}, s_b: {s_b}, e_p: {e_p}, s_p: {s_p}")
 
             for pitcher_id, (e_p, s_p) in game_pitcher_rewards.items():
-                pitcher_ratings[pitcher_id] += K * (s_p - e_p)
+                change = K * (s_p - e_p)
+                pitcher_ratings[pitcher_id] += change
             
             for batter_id, (e_b, s_b) in game_batter_rewards.items():
-                batter_ratings[batter_id] += K * (s_b - e_b)
+                change = K * (s_b - e_b)
+                batter_ratings[batter_id] += change
         
         # update all of the pitchers' ratings in the database if they are different from before
         print("updating pitcher ratings...")

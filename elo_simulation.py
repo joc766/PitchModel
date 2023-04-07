@@ -79,11 +79,5 @@ def main():
                 session.commit()
 
 
-        results = test_performance(results_table, pitchers_table, batters_table, session=session)
-        print("Total Inaccuracy: {}".format(results[0]))
-        print("Average Inaccuracy: {}".format(results[1]))
-        print("Average outcome: {}".format(results[2]))
-
-
 if __name__ == "__main__":
     main()

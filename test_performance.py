@@ -106,11 +106,8 @@ def test_baseline(results_table, pitchers_table=None, batters_table=None, sessio
     return total_inaccuracy, total_inaccuracy / n_plays, total_outcome/n_plays
 
 if __name__ == "__main__":
-    # print(results_table)
-    # total_wins, expected_wins, n_plays = test_predicted_outcomes()
-    # print(total_wins, expected_wins, n_plays)
-    # print(f"Inaccuracy: {total_wins - expected_wins} / {n_plays} = {(total_wins - expected_wins) / n_plays}") 
+    total_wins, expected_wins, n_plays = test_predicted_outcomes()
+    print(f"Long-term Inaccuracy: {(total_wins - expected_wins) / n_plays}") 
     total_inaccuracy, average_inaccuracy, average_outcome = test_baseline(results_table)
-    print(f"Total Inaccuracy: {total_inaccuracy}")
-    print(f"Average Inaccuracy: {average_inaccuracy}")
+    print(f"Play-by-Play Inaccuracy: {average_inaccuracy}")
     print(f"Average Outcome: {average_outcome}")

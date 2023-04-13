@@ -39,7 +39,7 @@ def main():
         # order training plays by date
 
         print('Simulating Games...')
-        for game in games:
+        for game in progressbar(games):
             # game_pitcher_rewards tracks the pitcher's expected value and scored value for each game. An update will be made at the end of the game
             game_pitcher_rewards = dict.fromkeys([play.pitcherId for play in game.plays], [0, 0])
             game_batter_rewards = dict.fromkeys([play.batterId for play in game.plays], [0, 0])
@@ -65,7 +65,6 @@ def main():
 
             for batter_id, (e_b, s_b) in game_batter_rewards.items():
                 xp_factor = calculate_xp(batters_table[batter_id])
-                print(xp_factor)
                 change = K * (s_b - e_b) * xp_factor
                 batter_ratings[play.batterId] += change
             

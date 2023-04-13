@@ -9,8 +9,7 @@ from progressbar import progressbar
 K = 16
 PLAYS_PER_UPDATE = 100
 
-def results_func(x):
-    return basic_func(x)
+results_func = basic_func
 
 results_table = {
     'DNS': -1,

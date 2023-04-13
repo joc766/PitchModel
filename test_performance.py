@@ -3,7 +3,8 @@ from elo_simulation import results_table
 from utils import calculate_ev, logistic_func
 from db_utils import create_session_scope, get_all_games, get_all_plays
 
-def test_predicted_outcomes(pitchers_table=None, batters_table=None, session=None):
+def test_long_term(pitchers_table=None, batters_table=None, session=None):
+    """ Test how accurate the model is at projecting long-term outcomes """
     total_wins = 0
     expected_wins = 0
     n_plays = 0
@@ -16,12 +17,7 @@ def test_predicted_outcomes(pitchers_table=None, batters_table=None, session=Non
             all_batters = session.query(Batter).all()
             batters_table = {batter.playerId: batter for batter in all_batters}
 
-        print("Measuring Model Performance...")
         testing_plays = get_all_plays(session, training=False)
-        
-        max_result = max(results_table.values())
-
-        inverse_results = {v: k for k, v in results_table.items()}
 
         for play in testing_plays:
             pitcher_rating = pitchers_table[play.pitcherId].rating.value
@@ -38,13 +34,10 @@ def test_predicted_outcomes(pitchers_table=None, batters_table=None, session=Non
             
         return total_wins, expected_wins, n_plays
     
-def test_performance(results_table, pitchers_table=None, batters_table=None, session=None):
-    """Test the performance of the model on the test set
+def test_play_by_play(results_table, pitchers_table=None, batters_table=None, session=None):
+    """Test the play by play accuracy of the model
     
-    Returns:
-        total_inaccuracy (float): the total inaccuracy of the model
-        average_inaccuracy (float): the average inaccuracy of the model
-        average_outcome (float): the average outcome of the model
+        returns: (wrong_predictions, n_plays, total_outcome)
     """
     with create_session_scope(session) as session:
         if not pitchers_table:
@@ -53,17 +46,11 @@ def test_performance(results_table, pitchers_table=None, batters_table=None, ses
         if not batters_table:
             all_batters = session.query(Batter).all()
             batters_table = {batter.playerId: batter for batter in all_batters}
-
-        print("Measuring Model Performance...")
-        testing_games = get_all_games(session, training=False)
-        testing_plays = []
-        for game in testing_games:
-            testing_plays.extend(game.plays)
-        
-        max_result = max(results_table.values())
+            
+        testing_plays = get_all_plays(session, training=False)
 
         # measure the accuracy of the model
-        total_inaccuracy = 0.0
+        wrong_predictions = 0
         n_plays = 0
         total_outcome = 0.0
         for play in testing_plays:
@@ -71,19 +58,24 @@ def test_performance(results_table, pitchers_table=None, batters_table=None, ses
             batter_rating = batters_table[play.batterId].rating.value
 
             e_b = calculate_ev(batter_rating, pitcher_rating)
-            prediction = e_b
+            prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss
             result = play.result
             observed = results_table[result] 
+
             if observed != -1:
-                # observed /= max_result
                 total_outcome += observed
-                inaccuracy = abs(observed - prediction)
-                total_inaccuracy += inaccuracy
+                if observed != prediction:
+                    wrong_predictions += 1
                 n_plays += 1
+                total_outcome += observed
             
-        return total_inaccuracy, total_inaccuracy / n_plays, total_outcome/n_plays
+        return wrong_predictions, n_plays, total_outcome
     
 def test_baseline(results_table, pitchers_table=None, batters_table=None, session=None):
+    """ Test the accuracy of the baseline model
+    
+        returns: (wrong_predictions, n_plays, total_outcome)
+        """
     with create_session_scope(session) as session:
         if not pitchers_table:
             all_pitchers = session.query(Pitcher).all()
@@ -95,22 +87,28 @@ def test_baseline(results_table, pitchers_table=None, batters_table=None, sessio
     testing_plays = get_all_plays(session, training=False)
     
     # measure the accuracy of the predicting the most frequent outcome (0 for an out)
-    total_inaccuracy = 0.0
+    wrong_predictions = 0
     n_plays = 0
     total_outcome = 0.0
     for play in testing_plays:
+        prediction = 0
         result = play.result
         observed = results_table[result] 
         if observed != -1:
-            total_outcome += observed
-            total_inaccuracy += observed
-            n_plays += 1
+                        total_outcome += observed
+                        if observed != prediction:
+                            wrong_predictions += 1
+                        n_plays += 1
+                        total_outcome += observed
     
-    return total_inaccuracy, total_inaccuracy / n_plays, total_outcome/n_plays
+    return wrong_predictions, n_plays, total_outcome
 
 if __name__ == "__main__":
-    total_wins, expected_wins, n_plays = test_predicted_outcomes()
-    print(f"Long-term Inaccuracy: {(total_wins - expected_wins) / n_plays}") 
-    total_inaccuracy, average_inaccuracy, average_outcome = test_baseline(results_table)
-    print(f"Play-by-Play Inaccuracy: {average_inaccuracy}")
-    print(f"Average Outcome: {average_outcome}")
+    total_wins, expected_wins, n_plays = test_long_term()
+    print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+
+    wrong_predictions, n_plays, total_outcome = test_play_by_play(results_table)
+    print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+
+    wrong_predictions, n_plays, total_outcome = test_baseline(results_table)
+    print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")

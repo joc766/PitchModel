@@ -1,3 +1,5 @@
+from enum import Enum, auto 
+
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
@@ -7,6 +9,9 @@ DB_FILE = 'data/mlb.db'
 Base = declarative_base()
 engine = create_engine('sqlite:///' + DB_FILE, echo=False)
 
+class Position(Enum):
+    PITCHER = auto()
+    BATTER = auto()
 
 class Team(Base):
     __tablename__ = 'teams'

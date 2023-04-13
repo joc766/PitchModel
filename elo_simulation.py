@@ -1,12 +1,12 @@
+from enum import Enum, auto
 from sqlalchemy.orm import joinedload
 
-from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating
+from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating, Position
 from db_utils import create_session_scope, get_all_games
-
-from utils import logistic_func, quadratic_func, basic_func, calculate_ev, MAX_RESULT
+from utils import logistic_func, quadratic_func, basic_func, calculate_ev, calculate_xp
 from progressbar import progressbar
 
-K = 16
+K = 4
 PLAYS_PER_UPDATE = 100
 
 results_func = basic_func
@@ -39,7 +39,7 @@ def main():
         # order training plays by date
 
         print('Simulating Games...')
-        for game in progressbar(games):
+        for game in games:
             # game_pitcher_rewards tracks the pitcher's expected value and scored value for each game. An update will be made at the end of the game
             game_pitcher_rewards = dict.fromkeys([play.pitcherId for play in game.plays], [0, 0])
             game_batter_rewards = dict.fromkeys([play.batterId for play in game.plays], [0, 0])
@@ -59,11 +59,14 @@ def main():
                 # print(f"pitcher: {play.pitcherId}, batter: {play.batterId}, e_b: {e_b}, s_b: {s_b}, e_p: {e_p}, s_p: {s_p}")
 
             for pitcher_id, (e_p, s_p) in game_pitcher_rewards.items():
-                change = K * (s_p - e_p)
+                xp_factor = calculate_xp(pitchers_table[pitcher_id])
+                change = K * (s_p - e_p) * xp_factor
                 pitcher_ratings[play.pitcherId] += change
 
             for batter_id, (e_b, s_b) in game_batter_rewards.items():
-                change = K * (s_b - e_b)
+                xp_factor = calculate_xp(batters_table[batter_id])
+                print(xp_factor)
+                change = K * (s_b - e_b) * xp_factor
                 batter_ratings[play.batterId] += change
             
         # update all of the pitchers' ratings in the database if they are different from before

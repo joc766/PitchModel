@@ -1,7 +1,7 @@
 import math
 from progressbar import progressbar
-from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating
-from db_utils import create_session_scope
+from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating, Position
+from db_utils import create_session_scope, get_n_plays
 
 SIGMA = 400
 
@@ -22,3 +22,7 @@ def quadratic_func(x):
 
 def basic_func(x):
     return 1.0
+
+def calculate_xp(player):
+    xp = max(1, 5 - (player.n_plays / 400))
+    return xp

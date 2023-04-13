@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, joinedload, Session
-from models import engine, Game, Play
+from models import engine, Game, Play, Position, Pitcher, Batter
 
 @contextmanager
 def create_session_scope(existing_session=None):
@@ -36,3 +36,27 @@ def get_all_plays(session: Session = None, training: bool = True):
         plays = [play for game in games for play in game.plays]
 
     return plays
+
+
+def get_n_plays(id: int, position: Position, session: Session = None):
+    with create_session_scope(session) as session:
+        if position == Position.PITCHER:
+            n_plays = (
+                session.query(Pitcher)
+                .filter(Pitcher.playerId == id)
+                .first()
+                .n_plays
+            )
+        elif position == Position.BATTER:
+            n_plays = (
+                session.query(Batter)
+                .filter(Batter.playerId == id)
+                .first()
+                .n_plays
+            )
+        try:
+            return n_plays
+        except UnboundLocalError:
+            raise Exception(
+                f"Position must be either {Position.PITCHER} or {Position.BATTER}"
+            )

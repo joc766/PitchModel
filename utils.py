@@ -12,7 +12,11 @@ K_FACTOR = 0.5
 Y_INTERCEPT = 2.5
 
 def calculate_ev(r_a, r_b):
-    return 1 / (1 + 10 ** ((r_b - r_a) / SIGMA))
+    try:
+        return 1 / (1 + 10 ** ((r_b - r_a) / SIGMA))
+    except OverflowError:
+        # print(r_b, r_a)
+        return 0
 
 def logistic_func(x):
     return MAX_RESULT / (1 + GROWTH_RATE * math.exp(-K_FACTOR * x))
@@ -24,5 +28,5 @@ def basic_func(x):
     return 1.0
 
 def calculate_xp(player):
-    xp = max(1, 5 - (player.n_plays / 400))
+    xp = max(1, 5 - (player.n_plays / 1000))
     return xp

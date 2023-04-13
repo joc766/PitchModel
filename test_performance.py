@@ -1,7 +1,7 @@
 from models import Pitcher, Batter, Play, Game
 from elo_simulation import results_table
 from utils import calculate_ev, logistic_func
-from db_utils import create_session_scope
+from db_utils import create_session_scope, get_all_games, get_all_plays
 
 def test_predicted_outcomes(pitchers_table=None, batters_table=None, session=None):
     total_wins = 0
@@ -17,7 +17,7 @@ def test_predicted_outcomes(pitchers_table=None, batters_table=None, session=Non
             batters_table = {batter.playerId: batter for batter in all_batters}
 
         print("Measuring Model Performance...")
-        testing_plays = session.query(Play).filter(Play.training == False).all()
+        testing_plays = get_all_plays(session, training=False)
         
         max_result = max(results_table.values())
 
@@ -55,7 +55,10 @@ def test_performance(results_table, pitchers_table=None, batters_table=None, ses
             batters_table = {batter.playerId: batter for batter in all_batters}
 
         print("Measuring Model Performance...")
-        testing_plays = session.query(Play).filter(Play.training == False).all()
+        testing_games = get_all_games(session, training=False)
+        testing_plays = []
+        for game in testing_games:
+            testing_plays.extend(game.plays)
         
         max_result = max(results_table.values())
 
@@ -89,7 +92,7 @@ def test_baseline(results_table, pitchers_table=None, batters_table=None, sessio
             all_batters = session.query(Batter).all()
             batters_table = {batter.playerId: batter for batter in all_batters}
 
-    testing_plays = session.query(Play).filter(Play.training == False).all()
+    testing_plays = get_all_plays(session, training=False)
     
     # measure the accuracy of the predicting the most frequent outcome (0 for an out)
     total_inaccuracy = 0.0

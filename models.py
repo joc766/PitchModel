@@ -83,8 +83,9 @@ class Game(Base):
     awayTeamId = Column(Integer, ForeignKey('teams.id'))
     venue = Column(String(255))
     szn = Column(Integer)
+    training = Column(Boolean, default=True)
 
-    plays = relationship("Play", back_populates="game", uselist=True)
+    plays = relationship("Play", order_by="Play.atBatIndex", back_populates="game", uselist=True)
 
 
 class Play(Base):
@@ -96,7 +97,7 @@ class Play(Base):
     result = Column(String(255))
     pitcherId = Column(Integer, ForeignKey('pitchers.playerId'))
     batterId = Column(Integer, ForeignKey('batters.playerId'))
-    training = Column(Boolean, default=True)
+    atBatIndex = Column(Integer)
 
     game = relationship("Game", back_populates="plays", uselist=False)
     pitcher = relationship("Pitcher")

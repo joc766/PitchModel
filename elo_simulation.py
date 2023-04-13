@@ -1,5 +1,7 @@
+from sqlalchemy.orm import joinedload
+
 from models import Base, Team, Game, Play, Player, Pitcher, Batter, PitcherRating, BatterRating
-from db_utils import create_session_scope
+from db_utils import create_session_scope, get_all_games
 
 from utils import logistic_func, quadratic_func, basic_func, calculate_ev, MAX_RESULT
 from progressbar import progressbar
@@ -23,7 +25,7 @@ results_table = {
 def main():
     with create_session_scope() as session:
         # select all of the games with training = True
-        games = session.query(Game).order_by(Game.date).all()
+        games = get_all_games(session)
         
         all_pitchers = session.query(Pitcher).all()
         all_batters = session.query(Batter).all()
@@ -43,9 +45,8 @@ def main():
             game_pitcher_rewards = dict.fromkeys([play.pitcherId for play in game.plays], [0, 0])
             game_batter_rewards = dict.fromkeys([play.batterId for play in game.plays], [0, 0])
             for play in game.plays:
-                if play.training:
-                    if results_table[play.result] == -1:
-                        continue
+                if results_table[play.result] == -1:
+                    continue
 
                 e_b = calculate_ev(batter_ratings[play.batterId], pitcher_ratings[play.pitcherId])
                 e_p = 1 - e_b

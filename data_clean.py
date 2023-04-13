@@ -86,7 +86,7 @@ def read_all_games():
         # get play by play for the game
         plays = statsapi.get('game_playByPlay', {'gamePk': g['game_id']})['allPlays']
         for p in plays:
-            new_play = Play(gameId=g['game_id'], result=p['result']['event'], pitcherId=p['matchup']['pitcher']['id'], batterId=p['matchup']['batter']['id'], game=new_game)
+            new_play = Play(gameId=g['game_id'], result=p['result']['event'], pitcherId=p['matchup']['pitcher']['id'], batterId=p['matchup']['batter']['id'], game=new_game, atBatIndex=p['about']['atBatIndex'])
             session.add(new_play)
             try:
                 session.commit()
@@ -207,21 +207,23 @@ def assign_training_data():
     TRAINING_PERCENTAGE = 0.75
 
     # Get all plays from the database
-    plays = session.query(Play).all()
+    games = session.query(Game).all()
 
     # Sort the plays chronologically by date
-    plays_sorted = sorted(plays, key=lambda play: play.game.date)
+    games_sorted = sorted(games, key=lambda game: game.date)
 
     # Calculate the number of training and testing rows based on the split percentage
-    n_training = math.ceil(len(plays_sorted) * TRAINING_PERCENTAGE)
-    n_testing = len(plays_sorted) - n_training
+    n_training = math.ceil(len(games_sorted) * TRAINING_PERCENTAGE)
+    # n_testing = len(games_sorted) - n_training
+
+    # print(n_testing, n_training)
 
     # Update the training/testing flag for the appropriate number of rows
-    for i, play in enumerate(plays_sorted):
+    for i, game in enumerate(games_sorted):
         if i < n_training:
-            play.training = True
+            game.training = True
         else:
-            play.training = False
+            game.training = False
 
     # Commit the changes to the database
     session.commit()
@@ -229,11 +231,11 @@ def assign_training_data():
 
 def main():
     Base.metadata.create_all(engine)
-    # read_all_games()
+    read_all_games()
     # read_all_players([2021, 2022])
     # get_number_of_games()
     # initialize_ratings()
-    # clean_play_outcomes()
+    clean_play_outcomes()
     # set the 'training' column to True for all rows
     # add_training_column()
     assign_training_data()

@@ -62,13 +62,13 @@ def main():
                 # xp_factor = calculate_xp(pitchers_table[pitcher_id])
                 xp_factor = 1
                 change = K * (s_p - e_p) * xp_factor
-                pitcher_ratings[play.pitcherId] += change
+                pitcher_ratings[pitcher_id] += change
 
             for batter_id, (e_b, s_b) in game_batter_rewards.items():
                 # xp_factor = calculate_xp(batters_table[batter_id])
                 xp_factor = 1
                 change = K * (s_b - e_b) * xp_factor
-                batter_ratings[play.batterId] += change
+                batter_ratings[batter_id] += change
             
         # update all of the pitchers' ratings in the database if they are different from before
         print("updating pitcher ratings...")

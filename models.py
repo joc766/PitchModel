@@ -10,8 +10,8 @@ Base = declarative_base()
 engine = create_engine('sqlite:///' + DB_FILE, echo=False)
 
 class Position(Enum):
-    PITCHER = auto()
-    BATTER = auto()
+    PITCHER = 0
+    BATTER = 1
 
 class Team(Base):
     __tablename__ = 'teams'

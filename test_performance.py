@@ -45,7 +45,8 @@ def test_play_by_play(model, session, results_table=results_table):
 
     for play in get_all_plays(session, training=False):
 
-        prediction = model.predict(play) # prediction is in terms of expected batter wins
+        prediction = model.predict(play)
+        # print(prediction) # prediction is in terms of expected batter wins
         result = play.result
         observed = results_table[result] 
 
@@ -69,7 +70,7 @@ if __name__ == "__main__":
         dumb_model = DumbModel()
 
         wrong_predictions, n_plays, total_outcome = test_play_by_play(elo_model, session)
-        print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+        # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
-        wrong_predictions, n_plays, total_outcome = test_play_by_play(dumb_model, session)
-        print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")
+        # wrong_predictions, n_plays, total_outcome = test_play_by_play(dumb_model, session)
+        # print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")

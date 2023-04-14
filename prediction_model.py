@@ -119,6 +119,7 @@ class EloModel:
         batter = self.player_tables[Position.BATTER.value][play.batterId]
         pitcher_rating = pitcher.rating.value
         batter_rating = batter.rating.value
+        print(batter_rating, pitcher_rating)
 
         e_b = calculate_ev(batter_rating, pitcher_rating)
         prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss

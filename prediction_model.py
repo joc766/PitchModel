@@ -32,14 +32,16 @@ class EloModel:
 
     def __init__(self, session: Session, results_table=results_table):    
         all_pitchers = session.query(Pitcher).all()
-        pitchers_table = {pitcher.playerId: pitcher for pitcher in all_pitchers}
         all_batters = session.query(Batter).all()
+
+        pitchers_table = {pitcher.playerId: pitcher for pitcher in all_pitchers}
         batters_table = {batter.playerId: batter for batter in all_batters}
 
         self.player_tables = [pitchers_table, batters_table] # lines up with Position enum
 
         pitcher_ratings = {pitcher.playerId: pitcher.rating.value for pitcher in all_pitchers}
         batter_ratings = {batter.playerId: batter.rating.value for batter in all_batters}
+
         self.ratings_tables = [pitcher_ratings, batter_ratings]
 
         self.session = session
@@ -73,10 +75,10 @@ class EloModel:
                 if self.results_table[play.result] == -1:
                     continue
 
-                pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
-                batter = self.player_tables[Position.BATTER.value][play.batterId]
+                pitcher_rating = self.ratings_tables[Position.PITCHER.value][play.pitcherId]
+                batter_rating = self.ratings_tables[Position.BATTER.value][play.batterId]
 
-                e_b = calculate_ev(batter.rating.value, pitcher.rating.value)
+                e_b = calculate_ev(batter_rating, pitcher_rating)
                 e_p = 1 - e_b
                 game_pitcher_rewards[play.pitcherId][0] += e_p
                 game_batter_rewards[play.batterId][0] += e_b
@@ -119,7 +121,6 @@ class EloModel:
         batter = self.player_tables[Position.BATTER.value][play.batterId]
         pitcher_rating = pitcher.rating.value
         batter_rating = batter.rating.value
-        print(batter_rating, pitcher_rating)
 
         e_b = calculate_ev(batter_rating, pitcher_rating)
         prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss

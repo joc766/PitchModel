@@ -9,21 +9,10 @@ def test_long_term(model, session):
     expected_wins = 0
     n_plays = 0
 
-    if not pitchers_table:
-        all_pitchers = session.query(Pitcher).all()
-        pitchers_table = {pitcher.playerId: pitcher for pitcher in all_pitchers}
-    if not batters_table:
-        all_batters = session.query(Batter).all()
-        batters_table = {batter.playerId: batter for batter in all_batters}
-
     testing_plays = get_all_plays(session, training=False)
 
     for play in testing_plays:
-        pitcher_rating = pitchers_table[play.pitcherId].rating.value
-        batter_rating = batters_table[play.batterId].rating.value
-
-        e_b = calculate_ev(batter_rating, pitcher_rating)
-        prediction = 1 if e_b > 0.5 else 0
+        prediction = model.predict(play)
         result = play.result
         observed = results_table[result] 
         if observed != -1:
@@ -69,8 +58,11 @@ if __name__ == "__main__":
         elo_model = EloModel(session)
         dumb_model = DumbModel()
 
-        wrong_predictions, n_plays, total_outcome = test_play_by_play(elo_model, session)
-        # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+        total_wins, expected_wins, n_plays = test_long_term(elo_model, session)
+        print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
-        # wrong_predictions, n_plays, total_outcome = test_play_by_play(dumb_model, session)
-        # print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")
+        wrong_predictions, n_plays, total_outcome = test_play_by_play(elo_model, session)
+        print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+
+        wrong_predictions, n_plays, total_outcome = test_play_by_play(dumb_model, session)
+        print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")

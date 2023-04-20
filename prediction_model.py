@@ -75,6 +75,8 @@ class EloModel:
                 if self.results_table[play.result] == -1:
                     continue
 
+                pitcher: Pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
+
                 pitcher_rating = self.ratings_tables[Position.PITCHER.value][play.pitcherId]
                 batter_rating = self.ratings_tables[Position.BATTER.value][play.batterId]
 
@@ -87,6 +89,8 @@ class EloModel:
                 s_p = 1 - s_b
                 game_pitcher_rewards[play.pitcherId][1] += s_p
                 game_batter_rewards[play.batterId][1] += s_b
+
+                pitcher.outcomes_table[play.result] += 1
 
             for pitcher_id, (e_p, s_p) in game_pitcher_rewards.items():
                 # xp_factor = calculate_xp(pitchers_table[pitcher_id])

@@ -1,7 +1,7 @@
 from enum import Enum, auto 
 
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Boolean, Date
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, reconstructor
 from sqlalchemy.ext.declarative import declarative_base
 
 DB_FILE = 'data/mlb.db'
@@ -53,6 +53,17 @@ class Pitcher(Base):
 
     player = relationship("Player", foreign_keys=[playerId])
     rating = relationship("PitcherRating", uselist=False, foreign_keys=[ratingId])
+    
+    @reconstructor
+    def init_on_load(self):
+        self.outcomes_table = {
+            'Out': 0,
+            'Walk': 0,
+            'Single': 0,
+            'Double': 0,
+            'Triple': 0,
+            'Home Run': 0,
+        }
 
     def __str__(self):
         return f"{self.id}: {self.player.fullName}, {self.player.team}"

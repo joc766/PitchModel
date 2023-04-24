@@ -114,6 +114,9 @@ class Play(Base):
     pitcherId = Column(Integer, ForeignKey('pitchers.playerId'))
     batterId = Column(Integer, ForeignKey('batters.playerId'))
     atBatIndex = Column(Integer)
+    inning = Column(Integer)
+    outs = Column(Integer)
+    runnersOn = Column(Integer)
 
     game = relationship("Game", back_populates="plays", uselist=False)
     pitcher = relationship("Pitcher")

@@ -5,7 +5,7 @@ from db_utils import create_session_scope, get_n_plays
 
 SIGMA = 400
 
-MAX_RESULT = 5
+MAX_RESULT = 4
 GROWTH_RATE = 9
 K_FACTOR = 0.5
 
@@ -22,6 +22,9 @@ def quadratic_func(x):
 
 def basic_func(x):
     return 1.0
+
+def linear_func(x):
+    return x / MAX_RESULT
 
 def calculate_xp(player):
     xp = max(1, 5 - (player.n_plays / 400))

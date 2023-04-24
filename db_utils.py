@@ -29,7 +29,7 @@ def get_all_games(session: Session, training: bool = True):
 
     return games
 
-def get_all_plays(session: Session, training: bool = True):
+def get_all_plays(session: Session, training: bool = True) -> list[Play]:
     games = get_all_games(session, training=training)
     plays = [play for game in games for play in game.plays]
 

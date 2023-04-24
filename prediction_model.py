@@ -1,7 +1,8 @@
 from abc import abstractmethod
 from sqlalchemy.orm import Session
+import random
 
-from utils import calculate_ev, basic_func
+from utils import calculate_ev, basic_func, linear_func
 from db_utils import get_all_games
 from models import Pitcher, Batter, Play, Position
 from progressbar import progressbar
@@ -17,6 +18,19 @@ results_table = {
     'Home Run': results_func(5),
 }
 
+results_fnc = linear_func
+partial_results_table = {
+    'DNS': -1,
+    'Out': 0.0,
+    'Walk': results_func(1),
+    'Single': results_func(1),
+    'Double': results_func(2),
+    'Triple': results_func(3),
+    'Home Run': results_func(4),
+}
+
+
+
 class PredictionModel:
 
     @abstractmethod
@@ -27,10 +41,14 @@ class PredictionModel:
     def predict(self, play):
         pass
 
+    @abstractmethod
+    def predict_partial(self, play):
+        pass
+
 class EloModel:
     ### can only exist within a session scope
 
-    def __init__(self, session: Session, results_table=results_table):    
+    def __init__(self, session: Session, results_table=results_table, partial_results_table=partial_results_table):    
         all_pitchers = session.query(Pitcher).all()
         all_batters = session.query(Batter).all()
 
@@ -47,6 +65,7 @@ class EloModel:
         self.session = session
 
         self.results_table = results_table
+        self.partial_results_table = partial_results_table
         self.K = 16
         
 
@@ -119,6 +138,28 @@ class EloModel:
     def train(self, suppress_output=True):
         self.simulate_elo(suppress_output=suppress_output)
 
+    def calculate_ev(self, batter_rating, pitcher_rating, pitcher: Pitcher, batter: Batter, play: Play):
+        e_b = 1 / (1 + 10 ** ((pitcher_rating - batter_rating) / 400))
+        # now, given the probability of a hit, calculate the expected value of that hit and multiply by the probability of a hit
+        hit_value = 0
+        for outcome, value in self.partial_results_table.items():
+            if value <= 0:
+                continue
+            outcome_freq = pitcher.outcomes_table[outcome] / pitcher.n_plays
+            hit_value += value * outcome_freq
+        
+        return e_b * hit_value
+
+
+    def predict_partial(self, play: Play):
+        pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
+        batter = self.player_tables[Position.BATTER.value][play.batterId]
+        pitcher_rating = pitcher.rating.value
+        batter_rating = batter.rating.value
+
+        e_b = self.calculate_ev(batter_rating, pitcher_rating, pitcher, batter, play)
+        return e_b
+
     
     def predict(self, play: Play):
         pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
@@ -130,9 +171,26 @@ class EloModel:
         prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss
         return prediction
     
+    def predict_partials(self, play: Play):
+        pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
+        batter = self.player_tables[Position.BATTER.value][play.batterId]
+        pitcher_rating = pitcher.rating.value
+        batter_rating = batter.rating.value
+
+        e_b = calculate_ev(batter_rating, pitcher_rating)
+        prediction = e_b
+        if prediction < 0.5:
+            return 0
+        else:
+            # TODO figure out how to predict the most likely outcome
+            return 1
+    
 class DumbModel:
     def __init__(self):
         pass
 
     def predict(self, play):
+        return 0
+    
+    def predict_partial(self, play):
         return 0

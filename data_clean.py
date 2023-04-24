@@ -86,7 +86,7 @@ def read_all_games():
         # get play by play for the game
         plays = statsapi.get('game_playByPlay', {'gamePk': g['game_id']})['allPlays']
         for p in plays:
-            new_play = Play(gameId=g['game_id'], result=p['result']['event'], pitcherId=p['matchup']['pitcher']['id'], batterId=p['matchup']['batter']['id'], game=new_game, atBatIndex=p['about']['atBatIndex'])
+            new_play = Play(gameId=g['game_id'], result=p['result']['event'], pitcherId=p['matchup']['pitcher']['id'], batterId=p['matchup']['batter']['id'], game=new_game, atBatIndex=p['about']['atBatIndex'], inning=p['about']['inning'], outs=p['count']['outs'], runnersOn=len(p['runners'])-1)
             session.add(new_play)
             try:
                 session.commit()
@@ -245,4 +245,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    session.close()

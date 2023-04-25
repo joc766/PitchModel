@@ -24,6 +24,7 @@ def basic_func(x):
     return 1.0
 
 def linear_func(x):
+    print(x, MAX_RESULT)
     return x / MAX_RESULT
 
 def calculate_xp(player):

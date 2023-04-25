@@ -41,6 +41,45 @@ class Player(Base):
 
     def __str__(self):
         return f"{self.fullName}, {self.position}, {self.team}"
+    
+
+class PitcherOutcome(Base):
+    __tablename__ = 'pitcher_outcomes'
+
+    id = Column(Integer, primary_key=True)
+    pitcherId = Column(Integer, ForeignKey('pitchers.id'))
+    outs = Column(Integer)
+    walks = Column(Integer)
+    singles = Column(Integer)
+    doubles = Column(Integer)
+    triples = Column(Integer)
+    home_runs = Column(Integer)
+
+    pitcher = relationship("Pitcher", uselist=False, foreign_keys=[pitcherId])
+
+    outcome_columns = {
+        'out': 'outs',
+        'walk': 'walks',
+        'single': 'singles',
+        'double': 'doubles',
+        'triple': 'triples',
+        'home run': 'home_runs',
+    }
+
+    def get_outcome_count(self, outcome_str: str):
+        column_name = self.outcome_columns[outcome_str.lower()]
+        return getattr(self, column_name)
+    
+    def increment_outcome_count(self, outcome_str: str, increment=1):
+        # still need to session.commit() after calling this
+        column_name = self.outcome_columns[outcome_str.lower()]
+        current_value = getattr(self, column_name)
+        new_value = current_value + increment
+        setattr(self, column_name, new_value)
+        return new_value
+
+    def __str__(self):
+        return f"{self.pitcherId}: {self.pitcher.player.fullName}, {self.pitcher.player.team}"
 
 class Pitcher(Base):
     __tablename__ = 'pitchers'
@@ -50,20 +89,11 @@ class Pitcher(Base):
     ratingId = Column(Integer, ForeignKey('pitcher_ratings.id'))
     pitchHand = Column(String(10))
     n_plays = Column(Integer, default=0)
+    outcomesId = Column(Integer, ForeignKey('pitcher_outcomes.id'))
 
     player = relationship("Player", foreign_keys=[playerId])
     rating = relationship("PitcherRating", uselist=False, foreign_keys=[ratingId])
-    
-    @reconstructor
-    def init_on_load(self):
-        self.outcomes_table = {
-            'Out': 0,
-            'Walk': 0,
-            'Single': 0,
-            'Double': 0,
-            'Triple': 0,
-            'Home Run': 0,
-        }
+    outcomes = relationship("PitcherOutcome", uselist=False, foreign_keys=[outcomesId])
 
     def __str__(self):
         return f"{self.id}: {self.player.fullName}, {self.player.team}"

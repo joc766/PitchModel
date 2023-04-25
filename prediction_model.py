@@ -22,11 +22,11 @@ results_fnc = linear_func
 partial_results_table = {
     'DNS': -1,
     'Out': 0.0,
-    'Walk': results_func(1),
-    'Single': results_func(1),
-    'Double': results_func(2),
-    'Triple': results_func(3),
-    'Home Run': results_func(4),
+    'Walk': 0.25,
+    'Single': 0.25,
+    'Double': 0.5,
+    'Triple': 0.75,
+    'Home Run': 1.0,
 }
 
 
@@ -109,7 +109,7 @@ class EloModel:
                 game_pitcher_rewards[play.pitcherId][1] += s_p
                 game_batter_rewards[play.batterId][1] += s_b
 
-                pitcher.outcomes_table[play.result] += 1
+                pitcher.outcomes.increment_outcome_count(play.result)
 
             for pitcher_id, (e_p, s_p) in game_pitcher_rewards.items():
                 # xp_factor = calculate_xp(pitchers_table[pitcher_id])
@@ -145,7 +145,7 @@ class EloModel:
         for outcome, value in self.partial_results_table.items():
             if value <= 0:
                 continue
-            outcome_freq = pitcher.outcomes_table[outcome] / pitcher.n_plays
+            outcome_freq = pitcher.outcomes.get_outcome_count(outcome) / pitcher.n_plays
             hit_value += value * outcome_freq
         
         return e_b * hit_value
@@ -193,4 +193,14 @@ class DumbModel:
         return 0
     
     def predict_partial(self, play):
-        return 0
+        return 0.0 # guess the average outcome of all of the testing data
+
+class RandomModel:
+    def __init__(self):
+        pass
+
+    def predict(self, play):
+        return random.randint(0, 1)
+    
+    def predict_partial(self, play):
+        return random.random()

@@ -3,7 +3,7 @@ import sys
 from models import Pitcher, Batter, Play
 from utils import calculate_ev
 from db_utils import create_session_scope, get_all_games, get_all_plays
-from prediction_model import PredictionModel, EloModel, DumbModel, results_table, partial_results_table
+from prediction_model import PredictionModel, EloModel, DumbModel, RandomModel, results_table, partial_results_table
 
 def test_partial_pbp(model: PredictionModel, session, results_table=partial_results_table):
     """Test the play by play accuracy of the model
@@ -14,11 +14,12 @@ def test_partial_pbp(model: PredictionModel, session, results_table=partial_resu
     wrong_predictions = 0
     n_plays = 0
     total_outcome = 0.0
+    print(results_table)
 
     for play in get_all_plays(session, training=False):
         result = play.result
         # only test plays that are not outs
-        if result != 'Out': 
+        if result != 'DNS': 
             prediction = model.predict_partial(play)
             # print(prediction) # prediction is in terms of expected batter wins
             observed = results_table[result] 
@@ -115,20 +116,25 @@ def main():
     
     with create_session_scope() as session:
         elo_model = EloModel(session)
-        elo_model.train(suppress_output=False)
+        # elo_model.train(suppress_output=False)
         dumb_model = DumbModel()
+        random_model = RandomModel()
         if mode == PARTIAL_MODE:
             # wrong_predictions, n_plays, total_outcome = test_partial_pbp(elo_model, session)
             # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
-            # wrong_predictions, n_plays, total_outcome = test_partial_pbp(dumb_model, session)
-            # print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")
+            wrong_predictions, n_plays, total_outcome = test_partial_pbp(dumb_model, session)
+            print(f"Average outcome = {total_outcome / n_plays}")
+
 
             total_wins, expected_wins, n_plays = test_partial_lt(elo_model, session)
             print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
             total_wins, expected_wins, n_plays = test_partial_lt(dumb_model, session)
             print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+
+            total_wins, expected_wins, n_plays = test_partial_lt(random_model, session)
+            print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
         
         if mode == NORMAL_MODE:
 
@@ -140,6 +146,9 @@ def main():
 
             wrong_predictions, n_plays, total_outcome = test_pbp(dumb_model, session)
             print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")
+
+            wrong_predictions, n_plays, total_outcome = test_pbp(random_model, session)
+            print(f"Random Inaccuracy: {wrong_predictions / n_plays}")
 
 if __name__ == "__main__":
     main()

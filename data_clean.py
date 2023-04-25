@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 import statsapi
 
-from models import Team, Game, Play, Player, Pitcher, Batter, Base, PitcherRating, BatterRating
+from models import Team, Game, Play, Player, Pitcher, Batter, Base, PitcherRating, BatterRating, PitcherOutcome
 from progressbar import progressbar
 
 
@@ -41,7 +41,10 @@ def read_all_players(seasons):
             session.add(new_player)
 
             # just add every player as a two-way player
-            new_pitcher = Pitcher(playerId=p['id'], pitchHand=p['pitchHand']['code'])
+            new_outcome = PitcherOutcome(pitcherId=p['id'], outs=0, walks=0, singles=0, doubles=0, triples=0, home_runs=0)
+            session.add(new_outcome)
+            session.commit()
+            new_pitcher = Pitcher(playerId=p['id'], pitchHand=p['pitchHand']['code'], outcomesId=new_outcome.id)
             session.add(new_pitcher)
             new_batter = Batter(playerId=p['id'], batSide=p['batSide']['code'])
             session.add(new_batter)
@@ -94,6 +97,18 @@ def read_all_games():
                 session.rollback()
                 logger.warning('Play already exists for game {}'.format(g['game_id']))
 
+def initialize_outcomes():
+    pitchers = session.query(Pitcher).all()
+    print('Initializing pitcher outcomes...')
+    for p in progressbar(pitchers):
+        new_outcome = PitcherOutcome(pitcherId=p.id, outs=0, walks=0, singles=0, doubles=0, triples=0, home_runs=0)
+        session.add(new_outcome)
+        session.commit()
+        p.outcomesId = new_outcome.id
+        session.commit()
+
+    return
+    
 def initialize_ratings():
     # Create a rating for each pitcher
     pitchers = session.query(Pitcher).all()
@@ -231,14 +246,15 @@ def assign_training_data():
 
 def main():
     Base.metadata.create_all(engine)
-    read_all_games()
+    # read_all_games()
+    initialize_outcomes()
     # read_all_players([2021, 2022])
     # get_number_of_games()
     # initialize_ratings()
-    clean_play_outcomes()
+    # clean_play_outcomes()
     # set the 'training' column to True for all rows
     # add_training_column()
-    assign_training_data()
+    # assign_training_data()
 
     session.close()
 

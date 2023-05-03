@@ -20,9 +20,7 @@ results_table = {
 
 results_fnc = linear_func
 partial_results_table = {
-    'DNS': -1,
     'Out': 0.0,
-    'Walk': 0.25,
     'Single': 0.25,
     'Double': 0.5,
     'Triple': 0.75,
@@ -67,6 +65,8 @@ class EloModel:
         self.results_table = results_table
         self.partial_results_table = partial_results_table
         self.K = 16
+        self.results_as_integers = {result: i for i, result in enumerate(self.partial_results_table.keys())}
+        print("RESULTS AS INTEGERS: ", self.results_as_integers)
         
 
     def update_ratings(self, ratings, position: Position):
@@ -142,13 +142,21 @@ class EloModel:
         e_b = 1 / (1 + 10 ** ((pitcher_rating - batter_rating) / 400))
         # now, given the probability of a hit, calculate the expected value of that hit and multiply by the probability of a hit
         hit_value = 0
+        outcome_freqs = {i: 0 for i in range(1, len(self.partial_results_table))}
+        n_outs = pitcher.outcomes.get_outcome_count("out")
+        n_zeros = 0
         for outcome, value in self.partial_results_table.items():
             if value <= 0:
                 continue
-            outcome_freq = pitcher.outcomes.get_outcome_count(outcome) / pitcher.n_plays
+            outcome_ind = self.results_as_integers[outcome]
+            try:
+                outcome_freq = pitcher.outcomes.get_outcome_count(outcome) / (pitcher.n_plays - n_outs)
+            except ZeroDivisionError:
+                outcome_freq = 0.25
+            outcome_freqs[outcome_ind] = outcome_freq * e_b
             hit_value += value * outcome_freq
         
-        return e_b * hit_value
+        return e_b * hit_value, e_b, outcome_freqs
 
 
     def predict_partial(self, play: Play):
@@ -171,19 +179,17 @@ class EloModel:
         prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss
         return prediction
     
-    def predict_partials(self, play: Play):
+    def predict_partial_outcomes(self, play: Play):
         pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
         batter = self.player_tables[Position.BATTER.value][play.batterId]
         pitcher_rating = pitcher.rating.value
         batter_rating = batter.rating.value
 
-        e_b = calculate_ev(batter_rating, pitcher_rating)
+        e_b, hit_prob, partial_probs = self.calculate_ev(batter_rating, pitcher_rating, pitcher, batter, play)
         prediction = e_b
-        if prediction < 0.5:
-            return 0
-        else:
-            # TODO figure out how to predict the most likely outcome
-            return 1
+        outcome_probs = [1-hit_prob]
+        outcome_probs.extend(partial_probs.values())
+        return prediction, outcome_probs
     
 class DumbModel:
     def __init__(self):
@@ -194,6 +200,9 @@ class DumbModel:
     
     def predict_partial(self, play):
         return 0.0 # guess the average outcome of all of the testing data
+    
+    def predict_partial_outcomes(self, play):
+        return 0.0,  [0.7, 0.15, 0.05, 0.05, 0.05]
 
 class RandomModel:
     def __init__(self):
@@ -204,3 +213,6 @@ class RandomModel:
     
     def predict_partial(self, play):
         return random.random()
+    
+    def predict_partial_outcomes(self, play):
+        return random.random(), [random.random() for i in range(5)]

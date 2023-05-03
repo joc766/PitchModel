@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, joinedload, Session
+from sqlalchemy.orm import Session, sessionmaker, joinedload
 from models import engine, Game, Play, Position, Pitcher, Batter
 
 @contextmanager
@@ -21,7 +21,10 @@ def create_session_scope(existing_session=None):
 def get_all_games(session: Session, training: bool = True):
     games = (
         session.query(Game)
-        .options(joinedload(Game.plays))
+        .options(
+            joinedload(Game.plays).joinedload(Play.pitcher),
+            joinedload(Game.plays).joinedload(Play.batter)
+        )
         .filter(Game.training == True)
         .order_by(Game.date)
         .all()
@@ -31,8 +34,10 @@ def get_all_games(session: Session, training: bool = True):
 
 def get_all_plays(session: Session, training: bool = True) -> list[Play]:
     games = get_all_games(session, training=training)
-    plays = [play for game in games for play in game.plays]
-
+    if training:
+        plays = [play for game in games for play in game.plays]
+    else:
+        plays = [play for game in games for play in game.plays if play.pitcher.n_plays > 500]
     return plays
 
 

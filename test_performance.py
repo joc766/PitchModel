@@ -1,9 +1,12 @@
 import sys
+from sklearn.metrics import log_loss
+import numpy as np
 
 from models import Pitcher, Batter, Play
 from utils import calculate_ev
 from db_utils import create_session_scope, get_all_games, get_all_plays
 from prediction_model import PredictionModel, EloModel, DumbModel, RandomModel, results_table, partial_results_table
+from progressbar import progressbar
 
 def test_partial_pbp(model: PredictionModel, session, results_table=partial_results_table):
     """Test the play by play accuracy of the model
@@ -99,6 +102,34 @@ def test_pbp(model: PredictionModel, session, results_table=results_table):
         
     return wrong_predictions, n_plays, total_outcome
 
+def compute_categorical_crossentropy(model: EloModel, session):
+    # Create a mapping from float values to integer indices
+    value_to_index = {value: i for i, value in enumerate(partial_results_table.values()) if value != -1}
+    true_labels: list[int] = []
+    predicted_probs = []
+
+    testing_plays = get_all_plays(session, training=False)
+
+    for play in progressbar(testing_plays):
+        result = play.result
+        prediction, outcome_probs = model.predict_partial_outcomes(play)
+        observed = partial_results_table[result]
+        if observed != -1:
+            result_index = value_to_index[observed]
+            true_labels.append(result_index)
+            predicted_probs.append(outcome_probs)
+
+    # Convert true_labels to one-hot encoded labels
+    identity = np.eye(len(partial_results_table))
+    one_hot_labels = identity[true_labels]
+
+    # Calculate the categorical cross-entropy
+    categorical_crossentropy = log_loss(one_hot_labels, predicted_probs)
+
+    return categorical_crossentropy
+
+
+
 def main():
     NORMAL_MODE = 0
     PARTIAL_MODE = 1
@@ -120,21 +151,34 @@ def main():
         dumb_model = DumbModel()
         random_model = RandomModel()
         if mode == PARTIAL_MODE:
-            # wrong_predictions, n_plays, total_outcome = test_partial_pbp(elo_model, session)
-            # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+            print("TESTING PARTIAL MODE:")
+            # # wrong_predictions, n_plays, total_outcome = test_partial_pbp(elo_model, session)
+            # # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
-            wrong_predictions, n_plays, total_outcome = test_partial_pbp(dumb_model, session)
-            print(f"Average outcome = {total_outcome / n_plays}")
+            # wrong_predictions, n_plays, total_outcome = test_partial_pbp(dumb_model, session)
+            # print(f"Average outcome = {total_outcome / n_plays}")
 
 
-            total_wins, expected_wins, n_plays = test_partial_lt(elo_model, session)
-            print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+            # total_wins, expected_wins, n_plays = test_partial_lt(elo_model, session)
+            # print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
-            total_wins, expected_wins, n_plays = test_partial_lt(dumb_model, session)
-            print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+            # total_wins, expected_wins, n_plays = test_partial_lt(dumb_model, session)
+            # print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
-            total_wins, expected_wins, n_plays = test_partial_lt(random_model, session)
-            print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+            # total_wins, expected_wins, n_plays = test_partial_lt(random_model, session)
+            # print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+
+            # Calculate the categorical cross-entropy for Elo-based model
+            categorical_crossentropy = compute_categorical_crossentropy(elo_model, session)
+            print("Categorical Cross-Entropy:", categorical_crossentropy)
+
+            # Calculate the categorical cross-entropy for baseline
+            categorical_crossentropy = compute_categorical_crossentropy(dumb_model, session)
+            print("Baseline Categorical Cross-Entropy:", categorical_crossentropy)
+
+            # Calculate the categorical cross-entropy for random
+            categorical_crossentropy = compute_categorical_crossentropy(random_model, session)
+            print("Random Categorical Cross-Entropy:", categorical_crossentropy)
         
         if mode == NORMAL_MODE:
 

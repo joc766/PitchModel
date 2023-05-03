@@ -49,7 +49,6 @@ class PitcherOutcome(Base):
     id = Column(Integer, primary_key=True)
     pitcherId = Column(Integer, ForeignKey('pitchers.id'))
     outs = Column(Integer)
-    walks = Column(Integer)
     singles = Column(Integer)
     doubles = Column(Integer)
     triples = Column(Integer)
@@ -59,7 +58,6 @@ class PitcherOutcome(Base):
 
     outcome_columns = {
         'out': 'outs',
-        'walk': 'walks',
         'single': 'singles',
         'double': 'doubles',
         'triple': 'triples',

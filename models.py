@@ -77,7 +77,7 @@ class PitcherOutcome(Base):
         return new_value
 
     def __str__(self):
-        return f"{self.pitcherId}: {self.pitcher.player.fullName}, {self.pitcher.player.team}"
+        return f"{self.pitcherId}: {self.pitcher.player.fullName}, {self.pitcher.player.team}: {self.outs} outs, {self.singles} singles, {self.doubles} doubles, {self.triples} triples, {self.home_runs} home runs"
 
 class Pitcher(Base):
     __tablename__ = 'pitchers'

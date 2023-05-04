@@ -4,7 +4,7 @@ import numpy as np
 
 from models import Pitcher, Batter, Play
 from utils import calculate_ev
-from db_utils import create_session_scope, get_all_games, get_all_plays
+from db_utils import create_session_scope, get_all_plays
 from prediction_model import PredictionModel, EloModel, DumbModel, RandomModel, results_table, partial_results_table
 from progressbar import progressbar
 
@@ -17,13 +17,12 @@ def test_partial_pbp(model: PredictionModel, session, results_table=partial_resu
     wrong_predictions = 0
     n_plays = 0
     total_outcome = 0.0
-    print(results_table)
 
-    for play in get_all_plays(session, training=False):
+    for play in progressbar(get_all_plays(session, training=False)):
         result = play.result
         # only test plays that are not outs
         if result != 'DNS': 
-            prediction = model.predict_partial(play)
+            prediction, outcomes = model.predict_partial_outcomes(play)
             # print(prediction) # prediction is in terms of expected batter wins
             observed = results_table[result] 
 
@@ -44,10 +43,10 @@ def test_partial_lt(model: PredictionModel, session, results_table=partial_resul
 
     testing_plays = get_all_plays(session, training=False)
 
-    for play in testing_plays:
+    for play in progressbar(testing_plays):
         result = play.result
         # only test plays that are not outs
-        prediction = model.predict_partial(play)
+        prediction, _ = model.predict_partial_outcomes(play)
         # print(prediction)
         observed = results_table[result] 
         if observed != -1:
@@ -65,7 +64,7 @@ def test_lt(model: PredictionModel, session, results_table=results_table):
 
     testing_plays = get_all_plays(session, training=False)
 
-    for play in testing_plays:
+    for play in progressbar(testing_plays):
         prediction = model.predict(play)
         result = play.result
         observed = results_table[result] 
@@ -86,9 +85,10 @@ def test_pbp(model: PredictionModel, session, results_table=results_table):
     n_plays = 0
     total_outcome = 0.0
 
-    for play in get_all_plays(session, training=False):
+    for play in progressbar(get_all_plays(session, training=False)):
 
         prediction = model.predict(play)
+        prediction = int(prediction > 0.5)
         # print(prediction) # prediction is in terms of expected batter wins
         result = play.result
         observed = results_table[result] 
@@ -133,41 +133,41 @@ def compute_categorical_crossentropy(model: EloModel, session):
 def main():
     NORMAL_MODE = 0
     PARTIAL_MODE = 1
+    ENTROPY_MODE = 2
 
     modes = {
         "partial": PARTIAL_MODE,
-        "normal": NORMAL_MODE
+        "normal": NORMAL_MODE,
+        "entropy": ENTROPY_MODE
     }
 
     try:
         mode = modes[sys.argv[1]] if len(sys.argv) > 1 else NORMAL_MODE
     except KeyError:
-        print(f"Invalid mode: {sys.argv[1]}")
-        return
+        print(f"Invalid mode: {sys.argv[1]} (valid modes are: partial, normal, entropy)")
+        exit(1)
     
     with create_session_scope() as session:
         elo_model = EloModel(session)
-        # elo_model.train(suppress_output=False)
         dumb_model = DumbModel()
         random_model = RandomModel()
+
         if mode == PARTIAL_MODE:
             print("TESTING PARTIAL MODE:")
-            # # wrong_predictions, n_plays, total_outcome = test_partial_pbp(elo_model, session)
-            # # print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
+            wrong_predictions, n_plays, total_outcome = test_partial_pbp(elo_model, session)
+            print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
-            # wrong_predictions, n_plays, total_outcome = test_partial_pbp(dumb_model, session)
-            # print(f"Average outcome = {total_outcome / n_plays}")
+            total_wins, expected_wins, n_plays = test_partial_lt(elo_model, session)
+            print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
+            total_wins, expected_wins, n_plays = test_partial_lt(dumb_model, session)
+            print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
-            # total_wins, expected_wins, n_plays = test_partial_lt(elo_model, session)
-            # print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+            total_wins, expected_wins, n_plays = test_partial_lt(random_model, session)
+            print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
-            # total_wins, expected_wins, n_plays = test_partial_lt(dumb_model, session)
-            # print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
-
-            # total_wins, expected_wins, n_plays = test_partial_lt(random_model, session)
-            # print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
-
+        if mode == ENTROPY_MODE:
+            print("TESTING ENTROPY MODE:")
             # Calculate the categorical cross-entropy for Elo-based model
             categorical_crossentropy = compute_categorical_crossentropy(elo_model, session)
             print("Categorical Cross-Entropy:", categorical_crossentropy)
@@ -185,14 +185,20 @@ def main():
             total_wins, expected_wins, n_plays = test_lt(elo_model, session)
             print(f"Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
 
+            total_wins, expected_wins, n_plays = test_lt(dumb_model, session)
+            print(f"Baseline Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+
+            total_wins, expected_wins, n_plays = test_lt(random_model, session)
+            print(f"Random Long-term Inaccuracy: {abs(total_wins - expected_wins) / n_plays}")
+
             wrong_predictions, n_plays, total_outcome = test_pbp(elo_model, session)
             print(f"Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
             wrong_predictions, n_plays, total_outcome = test_pbp(dumb_model, session)
-            print(f"Baseline Inaccuracy: {wrong_predictions / n_plays}")
+            print(f"Baseline Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
             wrong_predictions, n_plays, total_outcome = test_pbp(random_model, session)
-            print(f"Random Inaccuracy: {wrong_predictions / n_plays}")
+            print(f"Random Play-by-Play Inaccuracy: {wrong_predictions / n_plays}")
 
 if __name__ == "__main__":
     main()

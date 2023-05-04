@@ -2,7 +2,7 @@ from abc import abstractmethod
 from sqlalchemy.orm import Session
 import random
 
-from utils import calculate_ev, basic_func, linear_func
+from utils import calculate_ev, basic_func, linear_func, calculate_xp
 from db_utils import get_all_games
 from models import Pitcher, Batter, Play, Position
 from progressbar import progressbar
@@ -43,6 +43,10 @@ class PredictionModel:
     def predict_partial(self, play):
         pass
 
+    @abstractmethod
+    def predict_partial_outcomes(self, play) -> tuple[float, list[float]]:
+        pass
+
 class EloModel:
     ### can only exist within a session scope
 
@@ -66,7 +70,6 @@ class EloModel:
         self.partial_results_table = partial_results_table
         self.K = 16
         self.results_as_integers = {result: i for i, result in enumerate(self.partial_results_table.keys())}
-        print("RESULTS AS INTEGERS: ", self.results_as_integers)
         
 
     def update_ratings(self, ratings, position: Position):
@@ -75,12 +78,15 @@ class EloModel:
             player = self.player_tables[position][player_id]
             if player.rating.value != rating:
                 player.rating.value = rating
+                self.session.add(player)
                 if i % 250 == 0:
                     self.session.commit()
                 i += 1
 
     def simulate_elo(self, suppress_output=True):
         games = get_all_games(self.session, training=True)
+        n_plays_pitchers_table = {playerId: 0 for playerId in self.player_tables[Position.PITCHER.value].keys()}
+        n_plays_batters_table = {playerId: 0 for playerId in self.player_tables[Position.BATTER.value].keys()}
 
         if not suppress_output:
             print('Simulating Games...')
@@ -109,16 +115,17 @@ class EloModel:
                 game_pitcher_rewards[play.pitcherId][1] += s_p
                 game_batter_rewards[play.batterId][1] += s_b
 
-                pitcher.outcomes.increment_outcome_count(play.result)
+                n_plays_pitchers_table[play.pitcherId] += 1
+                n_plays_batters_table[play.batterId] += 1
 
             for pitcher_id, (e_p, s_p) in game_pitcher_rewards.items():
-                # xp_factor = calculate_xp(pitchers_table[pitcher_id])
+                # xp_factor = calculate_xp(n_plays_pitchers_table[pitcher_id])
                 xp_factor = 1
                 change = self.K * (s_p - e_p) * xp_factor
                 self.ratings_tables[Position.PITCHER.value][pitcher_id] += change
 
             for batter_id, (e_b, s_b) in game_batter_rewards.items():
-                # xp_factor = calculate_xp(batters_table[batter_id])
+                # xp_factor = calculate_xp(n_plays_batters_table[batter_id])
                 xp_factor = 1
                 change = self.K * (s_b - e_b) * xp_factor
                 self.ratings_tables[Position.BATTER.value][batter_id] += change
@@ -168,28 +175,60 @@ class EloModel:
         e_b = self.calculate_ev(batter_rating, pitcher_rating, pitcher, batter, play)
         return e_b
 
-    
     def predict(self, play: Play):
         pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
         batter = self.player_tables[Position.BATTER.value][play.batterId]
-        pitcher_rating = pitcher.rating.value
-        batter_rating = batter.rating.value
+        # pitcher_rating = pitcher.rating.value
+        # batter_rating = batter.rating.value
+        pitcher_rating = self.ratings_tables[Position.PITCHER.value][play.pitcherId]
+        batter_rating = self.ratings_tables[Position.BATTER.value][play.batterId]
 
         e_b = calculate_ev(batter_rating, pitcher_rating)
-        prediction = int(e_b > 0.5) # predict a win if the batter is expected to win else predict a loss
+        prediction = e_b 
+
+        self.simulate_play(play)
+
         return prediction
     
-    def predict_partial_outcomes(self, play: Play):
+    def predict_partial_outcomes(self, play: Play) -> tuple[float, list[float]]:
         pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
         batter = self.player_tables[Position.BATTER.value][play.batterId]
-        pitcher_rating = pitcher.rating.value
-        batter_rating = batter.rating.value
+        # pitcher_rating = pitcher.rating.value
+        # batter_rating = batter.rating.value
+        pitcher_rating = self.ratings_tables[Position.PITCHER.value][play.pitcherId]
+        batter_rating = self.ratings_tables[Position.BATTER.value][play.batterId]
 
         e_b, hit_prob, partial_probs = self.calculate_ev(batter_rating, pitcher_rating, pitcher, batter, play)
         prediction = e_b
         outcome_probs = [1-hit_prob]
         outcome_probs.extend(partial_probs.values())
+
+        self.simulate_play(play)
+
         return prediction, outcome_probs
+    
+    def simulate_play(self, play: Play):
+        pitcher: Pitcher = self.player_tables[Position.PITCHER.value][play.pitcherId]
+
+        pitcher_rating = self.ratings_tables[Position.PITCHER.value][play.pitcherId]
+        batter_rating = self.ratings_tables[Position.BATTER.value][play.batterId]
+
+        e_b = calculate_ev(batter_rating, pitcher_rating)
+        e_p = 1 - e_b
+
+        s_b = self.results_table[play.result]
+        s_p = 1 - s_b
+
+        # pitcher.outcomes.increment_outcome_count(play.result)
+
+        # xp_factor = calculate_xp(self.ratings_tables[Position.PITCHER.values][play.pitcher_id])
+        xp_factor = 1
+        change = self.K * (s_p - e_p) * xp_factor
+        self.ratings_tables[Position.PITCHER.value][play.pitcherId] += change
+        # xp_factor = calculate_xp(self.ratings_tables[Position.BATTER.values][play.batter_id])
+        xp_factor = 1
+        change = self.K * (s_b - e_b) * xp_factor
+        self.ratings_tables[Position.BATTER.value][play.batterId] += change
     
 class DumbModel:
     def __init__(self):
@@ -199,10 +238,10 @@ class DumbModel:
         return 0
     
     def predict_partial(self, play):
-        return 0.0 # guess the average outcome of all of the testing data
+        return 0.28 # guess the average outcome of all of the testing data
     
     def predict_partial_outcomes(self, play):
-        return 0.0,  [0.7, 0.15, 0.05, 0.05, 0.05]
+        return 0.0,  [0.96, 0.01, 0.01, 0.01, 0.01]
 
 class RandomModel:
     def __init__(self):
@@ -215,4 +254,10 @@ class RandomModel:
         return random.random()
     
     def predict_partial_outcomes(self, play):
+        total = 1.0
+        outcomes = []
+        for i in range(5):
+            new_val = random.uniform(0, total)
+            outcomes.append(new_val)
+            total -= new_val
         return random.random(), [random.random() for i in range(5)]

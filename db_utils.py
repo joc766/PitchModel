@@ -25,7 +25,7 @@ def get_all_games(session: Session, training: bool = True):
             joinedload(Game.plays).joinedload(Play.pitcher),
             joinedload(Game.plays).joinedload(Play.batter)
         )
-        .filter(Game.training == True)
+        .filter(Game.training == training)
         .order_by(Game.date)
         .all()
     )
@@ -34,10 +34,9 @@ def get_all_games(session: Session, training: bool = True):
 
 def get_all_plays(session: Session, training: bool = True) -> list[Play]:
     games = get_all_games(session, training=training)
-    if training:
-        plays = [play for game in games for play in game.plays]
-    else:
-        plays = [play for game in games for play in game.plays if play.pitcher.n_plays > 500]
+    plays = [play for game in games for play in game.plays]
+    # if not training:
+    #     plays = [play for game in games for play in game.plays if play.pitcher.n_plays > 600 and play.batter.n_plays > 600]
     return plays
 
 

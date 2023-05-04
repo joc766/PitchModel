@@ -243,11 +243,22 @@ def assign_training_data():
     # Commit the changes to the database
     session.commit()
 
+def assign_outcomes():
+    pitchers = session.query(Pitcher).all()
+
+    for pitcher in progressbar(pitchers):
+        pitcher.outcomes.outs = session.query(Play).filter(Play.pitcherId == pitcher.playerId, Play.result == 'Out').count()
+        pitcher.outcomes.singles = session.query(Play).filter(Play.pitcherId == pitcher.playerId, Play.result == 'Single').count()
+        pitcher.outcomes.doubles = session.query(Play).filter(Play.pitcherId == pitcher.playerId, Play.result == 'Double').count()
+        pitcher.outcomes.triples = session.query(Play).filter(Play.pitcherId == pitcher.playerId, Play.result == 'Triple').count()
+        pitcher.outcomes.home_runs = session.query(Play).filter(Play.pitcherId == pitcher.playerId, Play.result == 'Home Run').count()
+        session.add(pitcher)
+        session.commit()
 
 def main():
     Base.metadata.create_all(engine)
     # read_all_games()
-    initialize_outcomes()
+    assign_outcomes()
     # read_all_players([2021, 2022])
     # get_number_of_games()
     # initialize_ratings()

@@ -27,6 +27,6 @@ def linear_func(x):
     print(x, MAX_RESULT)
     return x / MAX_RESULT
 
-def calculate_xp(player):
-    xp = max(1, 5 - (player.n_plays / 400))
+def calculate_xp(n_plays):
+    xp = max(1, 5 - (n_plays / 200))
     return xp
